@@ -2,6 +2,7 @@
 # Pyspark k-means example: https://github.com/apache/spark/blob/master/examples/src/main/python/ml/kmeans_example.py
 # EMR setup help(mentions how to get a notebook): https://towardsdatascience.com/data-science-at-scale-with-pyspark-on-amazon-emr-cluster-622a0f4534ed
 # Example of k-means not using built in function: https://github.com/apache/spark/blob/master/examples/src/main/python/kmeans.py
+# How to use matplotlib on EMR: https://aws.amazon.com/de/blogs/big-data/install-python-libraries-on-a-running-cluster-with-emr-notebooks/ 
 
 import argparse
 import matplotlib.pyplot as plt

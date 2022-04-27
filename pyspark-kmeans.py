@@ -14,13 +14,30 @@ from pyspark.ml.evaluation import ClusteringEvaluator
 with SparkSession.builder.appName("Cluster research papers").getOrCreate() as spark:
     dataset = spark.read.format("libsvm").csv(data_source)
 
+    #tokenize
+    tokenizer = Tokenizer(inputCol="abstract", outputCol="words")
+    wordsData = tokenizer.transform(sentenceData)
+    remover = StopWordsRemover(inputCol="words", outputCol="filteredWords")
+
+    #apply TF
+    hashingTF = HashingTF(inputCol="filteredWords", outputCol="rawFeatures", numFeatures=1000)
+    featurizedData = hashingTF.transform(wordsData)
+
+    #apply IDF
+    idf = IDF(inputCol="rawFeatures", outputCol="features")
+    idfModel = idf.fit(featurizedData)
+    result = idfModel.transform(featurizedData)
+
+    #print to check if it works
+    result.select("label", "features").show()
+
     # Figure out best K
     silhouetteScores = []
     for K in range(2,11):
         #compute model with K
         kmeans = KMeans().setK(K).setSeed(1)
-        model = kmeans.fit(dataset)
-        predictions = model.transform(dataset)
+        model = kmeans.fit(result)
+        predictions = model.transform(result)
 
         #evaluate K and add to list
         evaluator = ClusteringEvaluator()
@@ -34,8 +51,8 @@ with SparkSession.builder.appName("Cluster research papers").getOrCreate() as sp
 
     #Create final kmeans model - assignment says to create 8 clusters
     kmeans = KMeans().setK(8).setSeed(1)
-    model = kmeans.fit(dataset)
-    predictions = model.transform(dataset)
+    model = kmeans.fit(result)
+    predictions = model.transform(result)
 
     #Print result
     centers = model.clusterCenters()

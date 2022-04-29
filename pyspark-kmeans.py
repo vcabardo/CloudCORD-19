@@ -26,7 +26,7 @@ with SparkSession.builder.appName("Cluster research papers").getOrCreate() as sp
     column_name = "abstract"
 
     #preprocessing: make all letters lowercase and remove special characters from the documents
-    lowercase_df = dataset.select(lower(col("abstract"), lower(col("title")).alias("abstract"))
+    lowercase_df = dataset.select(lower(col("abstract")).alias("abstract"))
     no_punct_df = lowercase_df.select((regexp_replace(col("abstract"), "[^a-z0-9\\s]", "")).alias("abstract"))
 
     #preprocessing: tokenize

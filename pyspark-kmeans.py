@@ -1,9 +1,3 @@
-# Resources
-# Pyspark k-means example: https://github.com/apache/spark/blob/master/examples/src/main/python/ml/kmeans_example.py
-# EMR setup help(mentions how to get a notebook): https://towardsdatascience.com/data-science-at-scale-with-pyspark-on-amazon-emr-cluster-622a0f4534ed
-# Example of k-means not using built in function: https://github.com/apache/spark/blob/master/examples/src/main/python/kmeans.py
-# How to use matplotlib on EMR: https://aws.amazon.com/de/blogs/big-data/install-python-libraries-on-a-running-cluster-with-emr-notebooks/
-# Vectorization: https://spark.apache.org/docs/latest/ml-features
 
 import argparse
 from pyspark.sql import SparkSession
@@ -12,16 +6,12 @@ from pyspark.ml.evaluation import ClusteringEvaluator
 from pyspark.ml.feature import Tokenizer, StopWordsRemover, HashingTF, IDF, CountVectorizer
 from pyspark.sql.functions import lower, regexp_replace, col, collect_list
 
-# sc.install_pypi_package("six==1.16.0")
-# sc.install_pypi_package("matplotlib", "https://pypi.org/simple")
-# import matplotlib.pyplot as plt
-
 with SparkSession.builder.appName("Cluster research papers").getOrCreate() as spark:
     dataset = spark.read.format("csv") \
       .option("sep", ",") \
       .option("inferSchema", "true") \
       .option("header", "true") \
-      .load("s3://ccassignment2/cleaned.csv")
+      .load("s3://ccassignment2/cleaned.csv") #IMPORTANT CHANGE THIS TO THE LOCATION OF YOUR CSV FILE
 
     column_name = "abstract"
 
@@ -37,20 +27,14 @@ with SparkSession.builder.appName("Cluster research papers").getOrCreate() as sp
     remover = StopWordsRemover(inputCol="words", outputCol="filteredWords")
     removed = remover.transform(wordsData)
 
-    #apply TF
-#     hashingTF = HashingTF(inputCol="filteredWords", outputCol="rawFeatures", numFeatures=1000)
-#     featurizedData = hashingTF.transform(removed)
-
     cv = CountVectorizer(inputCol="filteredWords", outputCol="rawFeatures", vocabSize=400)
     cvmodel = cv.fit(removed)
     featurizedData = cvmodel.transform(removed)
-#     print(model.vocabulary)
 
     #apply IDF
     idf = IDF(inputCol="rawFeatures", outputCol="features")
     idfModel = idf.fit(featurizedData)
     result = idfModel.transform(featurizedData)
-
 
     # Figure out best K
 #     silhouetteScores = []
@@ -75,7 +59,6 @@ with SparkSession.builder.appName("Cluster research papers").getOrCreate() as sp
     kmeans = KMeans().setK(8).setSeed(1)
     model = kmeans.fit(result)
     predictions = model.transform(result)
-#     predictions.show()
 
     predictions.groupBy('prediction').count().show()
     topWords = {}
@@ -98,13 +81,5 @@ with SparkSession.builder.appName("Cluster research papers").getOrCreate() as sp
 
     print(topWords)
     print(sorted(topWords, key=topWords.get, reverse=True)[:3])
-
-    #Print result
-#     centers = model.clusterCenters()
-#     print("Cluster Centers: ")
-#     for center in centers:
-#         print(center)
-#         print(type(center))
-
 
     spark.stop()

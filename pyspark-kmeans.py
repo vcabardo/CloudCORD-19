@@ -9,8 +9,8 @@ import argparse
 from pyspark.sql import SparkSession
 from pyspark.ml.clustering import KMeans
 from pyspark.ml.evaluation import ClusteringEvaluator
-from pyspark.ml.feature import Tokenizer, StopWordsRemover, HashingTF, IDF
-from pyspark.sql.functions import lower, regexp_replace, col
+from pyspark.ml.feature import Tokenizer, StopWordsRemover, HashingTF, IDF, CountVectorizer
+from pyspark.sql.functions import lower, regexp_replace, col, collect_list
 
 # sc.install_pypi_package("six==1.16.0")
 # sc.install_pypi_package("matplotlib", "https://pypi.org/simple")
@@ -38,16 +38,19 @@ with SparkSession.builder.appName("Cluster research papers").getOrCreate() as sp
     removed = remover.transform(wordsData)
 
     #apply TF
-    hashingTF = HashingTF(inputCol="filteredWords", outputCol="rawFeatures", numFeatures=1000)
-    featurizedData = hashingTF.transform(removed)
+#     hashingTF = HashingTF(inputCol="filteredWords", outputCol="rawFeatures", numFeatures=1000)
+#     featurizedData = hashingTF.transform(removed)
+
+    cv = CountVectorizer(inputCol="filteredWords", outputCol="rawFeatures", vocabSize=400)
+    cvmodel = cv.fit(removed)
+    featurizedData = cvmodel.transform(removed)
+#     print(model.vocabulary)
 
     #apply IDF
     idf = IDF(inputCol="rawFeatures", outputCol="features")
     idfModel = idf.fit(featurizedData)
     result = idfModel.transform(featurizedData)
 
-    #print to check if it works
-    result.select("filteredWords", "features").show()
 
     # Figure out best K
 #     silhouetteScores = []
@@ -72,7 +75,29 @@ with SparkSession.builder.appName("Cluster research papers").getOrCreate() as sp
     kmeans = KMeans().setK(8).setSeed(1)
     model = kmeans.fit(result)
     predictions = model.transform(result)
-    predictions.show()
+#     predictions.show()
+
+    predictions.groupBy('prediction').count().show()
+    topWords = {}
+    for cluster in range(8):
+        print("Cluster: ", cluster)
+        counts = predictions.filter(col('prediction') == cluster).select("features").collect()
+        frequencies = dict(zip(cvmodel.vocabulary, counts[0]['features'].values))
+
+        i = 0
+        from operator import itemgetter
+        for key, value in sorted(frequencies.items(), key=itemgetter(1), reverse=True):
+            print(key, value, )
+
+            if i == 0:
+                topWords[key] = value
+
+            i = i + 1
+            if i >= 10:
+                break
+
+    print(topWords)
+    print(sorted(topWords, key=topWords.get, reverse=True)[:3])
 
     #Print result
 #     centers = model.clusterCenters()
